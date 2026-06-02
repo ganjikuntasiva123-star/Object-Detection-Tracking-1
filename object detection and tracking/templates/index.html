@@ -1,0 +1,2478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Detection & Tracking — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           CSS Variables & Reset
+           ============================================================ */
+        :root,
+        [data-theme="dark"] {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d27;
+            --bg-card: #1e2130;
+            --bg-card-hover: #252839;
+            --border: #2a2e3f;
+            --border-focus: #4f6ef7;
+            --text-primary: #e8eaf0;
+            --text-secondary: #9ca3b8;
+            --text-muted: #6b7280;
+            --accent: #4f6ef7;
+            --accent-hover: #6380ff;
+            --accent-glow: rgba(79, 110, 247, 0.25);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.12);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, 0.12);
+            --yellow: #eab308;
+            --yellow-bg: rgba(234, 179, 8, 0.12);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0,0,0,.4);
+            --font: 'Inter', system-ui, -apple-system, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --transition: 200ms ease;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f4f5f9;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #eef0f6;
+            --border: #d1d5e0;
+            --border-focus: #4f6ef7;
+            --text-primary: #1a1d27;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --accent: #4f6ef7;
+            --accent-hover: #3b5de7;
+            --accent-glow: rgba(79, 110, 247, 0.12);
+            --green: #16a34a;
+            --green-bg: rgba(22, 163, 74, 0.10);
+            --red: #dc2626;
+            --red-bg: rgba(220, 38, 38, 0.10);
+            --yellow: #ca8a04;
+            --yellow-bg: rgba(202, 138, 4, 0.10);
+            --shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ============================================================
+           Scrollbar
+           ============================================================ */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ============================================================
+           Layout
+           ============================================================ */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .app-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .app-header h1 .badge {
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--accent-glow);
+            color: var(--accent);
+            padding: 2px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(79,110,247,.3);
+        }
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .status-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            transition: background var(--transition);
+        }
+        .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            padding: 20px 28px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ============================================================
+           Video Panel
+           ============================================================ */
+        .video-panel {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .video-panel .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .video-panel .panel-header .stats-summary {
+            display: flex;
+            gap: 18px;
+            font-size: 12px;
+        }
+        .video-panel .panel-header .stats-summary span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .video-panel .panel-header .stats-summary .num {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+            min-height: 420px;
+        }
+        .video-container img {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .video-placeholder {
+            color: var(--text-muted);
+            font-size: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .video-placeholder .icon {
+            font-size: 48px;
+            opacity: 0.4;
+        }
+        .video-placeholder .sub {
+            font-size: 12px;
+        }
+        .video-overlay-controls {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+        .video-overlay-controls button {
+            background: rgba(0,0,0,.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,.1);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+        .video-overlay-controls button:hover {
+            background: rgba(255,255,255,.15);
+        }
+
+        /* ============================================================
+           Sidebar
+           ============================================================ */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 18px;
+        }
+        .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+        }
+
+        /* ============================================================
+           Controls Card
+           ============================================================ */
+        .control-group {
+            margin-bottom: 14px;
+        }
+        .control-group:last-child { margin-bottom: 0; }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+        .control-group .value-display {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--accent);
+            float: right;
+        }
+
+        .control-group select,
+        .control-group input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: var(--font);
+            outline: none;
+            transition: border var(--transition);
+        }
+        .control-group select:focus,
+        .control-group input[type="text"]:focus {
+            border-color: var(--border-focus);
+        }
+        .control-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 8px center;
+            background-repeat: no-repeat;
+            background-size: 18px;
+            padding-right: 32px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            margin: 8px 0;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .btn {
+            flex: 1;
+            padding: 9px 12px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background: var(--red-bg);
+            color: var(--red);
+            border: 1px solid rgba(239,68,68,.2);
+        }
+        .btn-danger:hover { background: rgba(239,68,68,.2); }
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        /* ============================================================
+           Stats Card
+           ============================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat-item {
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .stat-value.fps { color: var(--green); }
+        .stat-value.tracks { color: var(--accent); }
+        .stat-value.dets { color: var(--yellow); }
+        .stat-value.frames { color: var(--text-muted); }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+
+        /* ============================================================
+           Track List
+           ============================================================ */
+        .track-list {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .track-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid transparent;
+            transition: all var(--transition);
+        }
+        .track-item:hover {
+            border-color: var(--border);
+        }
+        .track-item .track-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .track-item .track-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .track-item .track-id {
+            font-family: var(--mono);
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .track-item .track-class {
+            color: var(--text-secondary);
+        }
+        .track-item .track-conf {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .empty-tracks {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* ============================================================
+           File Upload Zone
+           ============================================================ */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-sm);
+            padding: 18px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            background: var(--bg-primary);
+            position: relative;
+        }
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: rgba(79,110,247,.04);
+        }
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            border-style: solid;
+        }
+        .upload-zone.has-file {
+            border-style: solid;
+            border-color: var(--green);
+            cursor: default;
+        }
+        .upload-content .upload-icon {
+            font-size: 32px;
+            opacity: 0.5;
+            margin-bottom: 6px;
+        }
+        .upload-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .upload-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .upload-progress {
+            text-align: left;
+        }
+        .upload-filename {
+            font-size: 12px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 200ms ease;
+        }
+        .upload-status {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .upload-done .upload-icon {
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+        .upload-done .upload-text {
+            font-size: 12px;
+            color: var(--green);
+            font-weight: 500;
+        }
+
+        /* ============================================================
+           Responsive
+           ============================================================ */
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+                padding: 12px 16px;
+            }
+            .app-header {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .app-header h1 { font-size: 15px; }
+        }
+
+        /* ============================================================
+           Class Checkbox List
+           ============================================================ */
+        .class-checkbox-list::-webkit-scrollbar { width: 4px; }
+        .class-checkbox-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .class-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background var(--transition);
+            font-size: 12px;
+        }
+        .class-checkbox-item:hover {
+            background: var(--bg-card-hover);
+        }
+        .class-checkbox-item input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border: 2px solid var(--border);
+            border-radius: 3px;
+            background: var(--bg-primary);
+            cursor: pointer;
+            flex-shrink: 0;
+            position: relative;
+            transition: all var(--transition);
+        }
+        .class-checkbox-item input[type="checkbox"]:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .class-checkbox-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: -1px;
+            left: 2px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .class-checkbox-item .class-label {
+            color: var(--text-primary);
+            cursor: pointer;
+            flex: 1;
+        }
+        .class-checkbox-item .class-id-badge {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            background: var(--bg-primary);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .class-filter-collapsed #classFilterBody {
+            display: none;
+        }
+        .class-filter-header-arrow {
+            font-size: 14px;
+        }
+
+        /* ============================================================
+           Preset Pills
+           ============================================================ */
+        .preset-btn {
+            border: none;
+            border-radius: 14px;
+            font-size: 10px;
+            font-weight: 600;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: all 150ms ease;
+            padding: 3px 10px;
+            white-space: nowrap;
+        }
+        .preset-btn.preset-pill {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .preset-btn.preset-pill:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-color: var(--accent);
+        }
+        .preset-btn.preset-pill.active {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        .preset-btn.preset-pill .pill-label {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .preset-btn.preset-pill .pill-count {
+            opacity: 0.6;
+            margin-left: 3px;
+            font-size: 9px;
+        }
+        .preset-btn.preset-save {
+            background: var(--green-bg);
+            color: var(--green);
+            border: 1px solid rgba(34,197,94,.2);
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+        .preset-btn.preset-save:hover {
+            background: rgba(34,197,94,.2);
+        }
+        .preset-btn.preset-manage {
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            font-size: 10px;
+            padding: 3px 6px;
+        }
+        .preset-btn.preset-manage:hover {
+            color: var(--text-primary);
+            border-color: var(--accent);
+        }
+        .preset-btn.preset-delete {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+            padding: 0 2px;
+            opacity: 0;
+            transition: opacity 150ms ease;
+            line-height: 1;
+        }
+        .preset-btn.preset-pill:hover .preset-delete {
+            opacity: 0.6;
+        }
+        .preset-btn.preset-pill:hover .preset-delete:hover {
+            opacity: 1;
+            color: var(--red);
+        }
+
+        /* Custom preset naming popup */
+        .preset-popup-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn .2s ease;
+        }
+        .preset-popup {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            width: 320px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+        }
+        .preset-popup h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .preset-popup p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+        .preset-popup input {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: var(--font);
+            outline: none;
+            box-sizing: border-box;
+            margin-bottom: 14px;
+        }
+        .preset-popup input:focus {
+            border-color: var(--border-focus);
+        }
+        .preset-popup .popup-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ============================================================
+           Event Log
+           ============================================================ */
+        .event-log {
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .event-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            background: var(--bg-primary);
+        }
+
+        .event-item .event-time {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .event-item .event-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+        .event-item .event-badge.new_track {
+            background: var(--green-bg);
+            color: var(--green);
+        }
+        .event-item .event-badge.track_lost {
+            background: var(--red-bg);
+            color: var(--red);
+        }
+        .event-item .event-badge.info {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+        .event-item .event-msg {
+            color: var(--text-secondary);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .event-item .event-msg strong {
+            color: var(--text-primary);
+        }
+        .event-item .event-conf {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .empty-events {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            padding: 16px;
+        }
+
+        /* ============================================================
+           FPS Performance Chart
+           ============================================================ */
+        .chart-wrapper {
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            padding: 8px;
+            border: 1px solid var(--border);
+        }
+        .chart-wrapper canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 600 / 180;
+            border-radius: 4px;
+        }
+        .chart-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .chart-stat {
+            font-family: var(--mono);
+            color: var(--text-secondary);
+        }
+
+        /* ============================================================
+           Toasts
+           ============================================================ */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            animation: slideIn .3s ease;
+        }
+        .toast.success { border-color: var(--green); }
+        .toast.error { border-color: var(--red); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================================
+    Header
+    ============================================================ -->
+    <header class="app-header">
+        <h1>
+            <span>🔍 Object Detection &amp; Tracking</span>
+            <span class="badge">YOLO + SORT</span>
+        </h1>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <div class="header-status">
+                <span class="status-dot offline" id="statusDot"></span>
+                <span id="statusText">Offline</span>
+            </div>
+            <button id="themeToggle" title="Toggle theme" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:16px;padding:5px 9px;display:flex;align-items:center;transition:all var(--transition);">
+                🌙
+            </button>
+        </div>
+    </header>
+
+    <!-- ============================================================
+    Main Grid
+    ============================================================ -->
+    <div class="main-grid">
+        <!-- Video Panel -->
+        <div class="video-panel">
+            <div class="panel-header">
+                <span>📹 Live Stream</span>
+                <div class="stats-summary">
+                    <span>FPS <span class="num" id="hdrFps">0.0</span></span>
+                    <span>Tracks <span class="num" id="hdrTracks">0</span></span>
+                    <span>Detections <span class="num" id="hdrDets">0</span></span>
+                </div>
+            </div>
+            <div class="video-container" id="videoContainer">
+                <img id="videoStream" src="" alt="Video stream" style="display:none;">
+                <div class="video-placeholder" id="placeholder">
+                    <div class="icon">🎥</div>
+                    <div>Click <strong>Start Stream</strong> to begin</div>
+                    <div class="sub">Connect a webcam or provide a video file path</div>
+                </div>
+                <div class="video-overlay-controls">
+                    <button onclick="resetTracker()">🔄 Reset Tracker</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Controls Card -->
+            <div class="card">
+                <div class="card-title">Controls</div>
+
+                <div class="control-group">
+                    <label>Video Source</label>
+                    <select id="sourceSelect">
+                        <option value="0">📷 Webcam</option>
+                        <option value="file">📁 Video File</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="fileUploadGroup" style="display:none;">
+                    <label>Upload Video File</label>
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file" id="fileInput" accept="video/mp4,video/avi,video/quicktime,video/x-matroska,video/webm,video/x-flv,video/x-ms-wmv" hidden>
+                        <div class="upload-content" id="uploadContent">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">Drag & drop a video file here</div>
+                            <div class="upload-sub">or click to browse</div>
+                        </div>
+                        <div class="upload-progress" id="uploadProgress" style="display:none;">
+                            <div class="upload-filename" id="uploadFilename"></div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="progressFill"></div>
+                            </div>
+                            <div class="upload-status" id="uploadStatus">Uploading…</div>
+                        </div>
+                        <div class="upload-done" id="uploadDone" style="display:none;">
+                            <div class="upload-icon">✅</div>
+                            <div class="upload-text" id="uploadedName"></div>
+                            <button class="btn btn-secondary" onclick="clearUpload()" style="padding:4px 12px;font-size:11px;margin-top:4px;">✕ Remove</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Model</label>
+                    <select id="modelSelect">
+                        <option value="yolo11n.pt">YOLO11 Nano (fastest)</option>
+                        <option value="yolo11s.pt">YOLO11 Small</option>
+                        <option value="yolo11m.pt">YOLO11 Medium (accurate)</option>
+                        <option value="yolov8n.pt">YOLOv8 Nano</option>
+                        <option value="yolov8s.pt">YOLOv8 Small</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Confidence Threshold <span class="value-display" id="confVal">0.50</span></label>
+                    <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.50">
+                </div>
+
+                <div class="control-group">
+                    <label>Device</label>
+                    <select id="deviceSelect">
+                        <option value="cpu">💻 CPU</option>
+                        <option value="cuda">🚀 CUDA (GPU)</option>
+                        <option value="mps">⚡ Apple MPS</option>
+                    </select>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="btnStart" onclick="startStream()">▶ Start Stream</button>
+                    <button class="btn btn-danger" id="btnStop" onclick="stopStream()" disabled>■ Stop</button>
+                </div>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="card">
+                <div class="card-title">Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value fps" id="statFps">0.0</div>
+                        <div class="stat-label">FPS</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value tracks" id="statTracks">0</div>
+                        <div class="stat-label">Tracks</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value dets" id="statDets">0</div>
+                        <div class="stat-label">Detections</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value frames" id="statFrames">0</div>
+                        <div class="stat-label">Frames</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Class Filter Card -->
+            <div class="card" id="classFilterCard">
+                <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" id="classFilterHeader">
+                    <span>🎯 Class Filter</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;" id="classFilterCount">All 80 classes</span>
+                </div>
+                <div id="classFilterBody">
+                    <div style="margin-bottom:10px;">
+                        <input type="text" id="classSearchInput" placeholder="Search classes…" style="width:100%;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:12px;outline:none;box-sizing:border-box;">
+                    </div>
+
+                    <!-- Presets -->
+                    <div style="margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                            <span style="font-size:11px;color:var(--text-muted);font-weight:500;">PRESETS</span>
+                            <div style="display:flex;gap:4px;">
+                                <button class="preset-btn preset-save" id="savePresetBtn" title="Save current selection as a new preset">💾 Save</button>
+                                <button class="preset-btn preset-manage" id="exportPresetsBtn" title="Export all presets as JSON">📤</button>
+                                <button class="preset-btn preset-manage" id="importPresetsBtn" title="Import presets from JSON file">📥</button>
+                                <button class="preset-btn preset-manage" id="managePresetsBtn" title="Manage your saved presets" style="display:none;">⚙️</button>
+                            </div>
+                            <input type="file" id="importPresetsInput" accept=".json" hidden>
+                        </div>
+                        <div id="presetsRow" style="display:flex;flex-wrap:wrap;gap:4px;">
+                            <!-- Preset pills injected by JS -->
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-bottom:10px;">
+                        <button class="btn btn-secondary" id="selectAllClasses" style="flex:1;padding:5px 8px;font-size:11px;">✓ Select All</button>
+                        <button class="btn btn-secondary" id="deselectAllClasses" style="flex:1;padding:5px 8px;font-size:11px;">✕ Deselect All</button>
+                    </div>
+                    <div style="color:var(--text-muted);font-size:11px;margin-bottom:8px;">
+                        <span id="classSelCount">0</span> classes selected (empty = all classes detected)
+                    </div>
+                    <div class="class-checkbox-list" id="classCheckboxList" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
+                        <div class="empty-tracks" id="classLoading">Loading classes…</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FPS Performance Chart -->
+            <div class="card">
+                <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>📊 FPS Over Time</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">
+                        <span id="fpsChartLive" style="font-family:var(--mono);color:var(--green);">0.0</span>
+                        &nbsp;avg <span id="fpsChartAvg" style="font-family:var(--mono);color:var(--text-secondary);">0.0</span>
+                    </span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="fpsChart" width="600" height="180"></canvas>
+                </div>
+                <div class="chart-footer">
+                    <span>min <span id="fpsChartMin" class="chart-stat">0.0</span></span>
+                    <span>max <span id="fpsChartMax" class="chart-stat">0.0</span></span>
+                    <span style="color:var(--text-muted);">⏱ <span id="fpsChartDuration">0s</span></span>
+                </div>
+            </div>
+
+            <!-- Detection Count Chart -->
+            <div class="card">
+                <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>📈 Detections Over Time</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">
+                        <span id="detChartLive" style="font-family:var(--mono);color:var(--yellow);">0</span>
+                        &nbsp;avg <span id="detChartAvg" style="font-family:var(--mono);color:var(--text-secondary);">0</span>
+                    </span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="detChart" width="600" height="180"></canvas>
+                </div>
+                <div class="chart-footer">
+                    <span>min <span id="detChartMin" class="chart-stat">0</span></span>
+                    <span>max <span id="detChartMax" class="chart-stat">0</span></span>
+                    <span style="color:var(--text-muted);">⏱ <span id="detChartDuration">0s</span></span>
+                </div>
+            </div>
+
+            <!-- Event Log Card -->
+            <div class="card">
+                <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>📋 Event Log</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">
+                        <span id="eventCount">0</span> events
+                    </span>
+                </div>
+                <div class="event-log" id="eventLog">
+                    <div class="empty-events">No events yet</div>
+                </div>
+            </div>
+
+            <!-- Track List Card -->
+            <div class="card">
+                <div class="card-title">Active Tracks</div>
+                <div class="track-list" id="trackList">
+                    <div class="empty-tracks">No active tracks</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============================================================
+    JavaScript
+    ============================================================ -->
+    <script>
+        // ================================================================
+        // Theme toggle
+        // ================================================================
+        const THEME_STORAGE_KEY = 'codebuff_theme';
+        const htmlEl = document.documentElement;
+        const themeBtn = document.getElementById('themeToggle');
+
+        function getPreferredTheme() {
+            const stored = localStorage.getItem(THEME_STORAGE_KEY);
+            if (stored === 'light' || stored === 'dark') return stored;
+            // No stored preference → use system preference
+            return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+
+        function setTheme(theme) {
+            htmlEl.setAttribute('data-theme', theme);
+            themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+            themeBtn.title = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+            try {
+                localStorage.setItem(THEME_STORAGE_KEY, theme);
+            } catch (_) {}
+        }
+
+        function toggleTheme() {
+            const current = htmlEl.getAttribute('data-theme') || 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+
+        // Apply theme on load
+        setTheme(getPreferredTheme());
+
+        // Listen for system preference changes (only when no stored preference)
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            const stored = localStorage.getItem(THEME_STORAGE_KEY);
+            if (!stored) {
+                setTheme(getPreferredTheme());
+            }
+        });
+
+        themeBtn.addEventListener('click', toggleTheme);
+
+        // ---- Color palette (must match Python COLORS) ----
+        const COLORS = [
+            [255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,0,255],[0,255,255],
+            [128,0,255],[255,128,0],[0,128,255],[255,0,128],[128,255,0],[0,255,128]
+        ];
+        function getColor(id) { return COLORS[id % COLORS.length]; }
+
+        // ---- DOM refs ----
+        const videoImg   = document.getElementById('videoStream');
+        const placeholder = document.getElementById('placeholder');
+        const statusDot  = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const btnStart   = document.getElementById('btnStart');
+        const btnStop    = document.getElementById('btnStop');
+
+        const hdrFps     = document.getElementById('hdrFps');
+        const hdrTracks  = document.getElementById('hdrTracks');
+        const hdrDets    = document.getElementById('hdrDets');
+        const statFps    = document.getElementById('statFps');
+        const statTracks = document.getElementById('statTracks');
+        const statDets   = document.getElementById('statDets');
+        const statFrames = document.getElementById('statFrames');
+        const trackList  = document.getElementById('trackList');
+        const eventLog   = document.getElementById('eventLog');
+        const eventCount = document.getElementById('eventCount');
+
+        const confSlider = document.getElementById('confSlider');
+        const confVal    = document.getElementById('confVal');
+
+        let streamActive = false;
+        let pollInterval = null;
+        let streamStartTime = null;
+
+        // ---- FPS Performance Chart ----
+        const MAX_FPS_HISTORY = 120;          // 60 s at 500 ms
+        let fpsHistory = [];                   // [{time, fps}, ...]
+        let chartStartTime = null;
+
+        const fpsCanvas  = document.getElementById('fpsChart');
+        const fpsCtx     = fpsCanvas.getContext('2d');
+        const fpsLiveEl  = document.getElementById('fpsChartLive');
+        const fpsAvgEl   = document.getElementById('fpsChartAvg');
+        const fpsMinEl   = document.getElementById('fpsChartMin');
+        const fpsMaxEl   = document.getElementById('fpsChartMax');
+        const fpsDurEl   = document.getElementById('fpsChartDuration');
+
+        // Resolve a CSS variable value from the computed style
+        function getCSSVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return {r, g, b};
+        }
+
+        function hexToRgba(hex, alpha) {
+            const {r, g, b} = hexToRgb(hex);
+            return alpha !== undefined ? `rgba(${r},${g},${b},${alpha})` : hex;
+        }
+
+        function pushFpsDataPoint(fps) {
+            const now = performance.now();
+            if (chartStartTime === null) chartStartTime = now;
+            fpsHistory.push({ time: now - chartStartTime, fps });
+            // Trim to max length
+            if (fpsHistory.length > MAX_FPS_HISTORY) {
+                fpsHistory = fpsHistory.slice(fpsHistory.length - MAX_FPS_HISTORY);
+                // Adjust start time so relative times stay valid
+                chartStartTime = now - fpsHistory[0].time;
+            }
+        }
+
+        function drawFpsChart() {
+            const canvas = fpsCanvas;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            // Set canvas buffer size for crisp rendering
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            const ctx = fpsCtx;
+            ctx.scale(dpr, dpr);
+
+            // Margins
+            const mL = 34, mR = 8, mT = 8, mB = 18;
+            const plotW = w - mL - mR;
+            const plotH = h - mT - mB;
+
+            // Resolve theme colors (re-read each frame to react to theme changes)
+            const textColor    = getCSSVar('--text-secondary') || '#9ca3b8';
+            const mutedColor   = getCSSVar('--text-muted') || '#6b7280';
+            const borderColor  = getCSSVar('--border') || '#2a2e3f';
+            const accentColor  = getCSSVar('--accent') || '#4f6ef7';
+            const bgPrimary    = getCSSVar('--bg-primary') || '#0f1117';
+
+            // Clear
+            ctx.clearRect(0, 0, w, h);
+
+            if (fpsHistory.length < 2) {
+                ctx.fillStyle = mutedColor;
+                ctx.font = '12px ' + getCSSVar('--font');
+                ctx.textAlign = 'center';
+                ctx.fillText('Waiting for data…', w / 2, h / 2 + 4);
+                return;
+            }
+
+            // Compute Y range
+            let minFps = Infinity, maxFps = -Infinity;
+            for (const d of fpsHistory) {
+                if (d.fps < minFps) minFps = d.fps;
+                if (d.fps > maxFps) maxFps = d.fps;
+            }
+            // Clamp min to 0, add 20% padding above max
+            minFps = 0;
+            maxFps = Math.max(maxFps * 1.2, 5);  // at least 5
+
+            const xRange = fpsHistory[fpsHistory.length - 1].time - t0;
+            const t0 = fpsHistory[0].time;
+
+            const toX = (t) => mL + (t - t0) / xRange * plotW;
+            const toY = (v) => mT + plotH - (v - minFps) / (maxFps - minFps) * plotH;
+
+            // ---- Grid lines ----
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 4]);
+
+            // Horizontal grid (Y axis)
+            const ySteps = 4;
+            for (let i = 0; i <= ySteps; i++) {
+                const val = minFps + (maxFps - minFps) * (i / ySteps);
+                const y = toY(val);
+                ctx.beginPath();
+                ctx.moveTo(mL, y);
+                ctx.lineTo(w - mR, y);
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = mutedColor;
+                ctx.font = '9px ' + getCSSVar('--font');
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(val.toFixed(1), mL - 5, y);
+            }
+            ctx.setLineDash([]);
+
+            // ---- X-axis time labels ----
+            const xSteps = 6;
+            ctx.fillStyle = mutedColor;
+            ctx.font = '9px ' + getCSSVar('--font');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for (let i = 0; i <= xSteps; i++) {
+                const t = t0 + xRange * (i / xSteps);
+                const x = toX(t);
+                const secs = (t / 1000).toFixed(i === 0 || i === xSteps ? 1 : 0);
+                ctx.fillText(secs + 's', x, h - mB + 4);
+            }
+
+            // ---- Build path ----
+            const points = fpsHistory.map(d => ({x: toX(d.time), y: toY(d.fps)}));
+
+            // ---- Fill area under line ----
+            const grad = ctx.createLinearGradient(0, mT, 0, mT + plotH);
+            const accentRGB = hexToRgb(accentColor);
+            grad.addColorStop(0, `rgba(${accentRGB.r},${accentRGB.g},${accentRGB.b},0.25)`);
+            grad.addColorStop(1, `rgba(${accentRGB.r},${accentRGB.g},${accentRGB.b},0.02)`);
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, mT + plotH);
+            for (const p of points) ctx.lineTo(p.x, p.y);
+            ctx.lineTo(points[points.length - 1].x, mT + plotH);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // ---- Draw FPS line ----
+            ctx.strokeStyle = accentColor;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.stroke();
+
+            // ---- Draw dot at latest point ----
+            const last = points[points.length - 1];
+            ctx.fillStyle = accentColor;
+            ctx.beginPath();
+            ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updateFpsStats() {
+            if (fpsHistory.length === 0) {
+                fpsLiveEl.textContent = '0.0';
+                fpsAvgEl.textContent  = '0.0';
+                fpsMinEl.textContent  = '0.0';
+                fpsMaxEl.textContent  = '0.0';
+                fpsDurEl.textContent  = '0s';
+                return;
+            }
+
+            const latest = fpsHistory[fpsHistory.length - 1].fps;
+            let sum = 0, min = Infinity, max = -Infinity;
+            for (const d of fpsHistory) {
+                sum += d.fps;
+                if (d.fps < min) min = d.fps;
+                if (d.fps > max) max = d.fps;
+            }
+            const avg = sum / fpsHistory.length;
+
+            fpsLiveEl.textContent = latest.toFixed(1);
+            fpsAvgEl.textContent  = avg.toFixed(1);
+            fpsMinEl.textContent  = min.toFixed(1);
+            fpsMaxEl.textContent  = max.toFixed(1);
+
+            const duration = (fpsHistory[fpsHistory.length - 1].time - fpsHistory[0].time) / 1000;
+            fpsDurEl.textContent = duration < 60
+                ? `${Math.round(duration)}s`
+                : `${(duration / 60).toFixed(1)}m`;
+        }
+
+        // Re-draw chart on window resize
+        let fpsChartRAF = null;
+        function requestFpsChartRedraw() {
+            if (fpsChartRAF) cancelAnimationFrame(fpsChartRAF);
+            fpsChartRAF = requestAnimationFrame(() => {
+                drawFpsChart();
+                fpsChartRAF = null;
+            });
+        }
+        window.addEventListener('resize', requestFpsChartRedraw);
+
+        // ---- Detection Count Chart ----
+        const MAX_DET_HISTORY = 120;
+        let detHistory = [];
+        let detChartStartTime = null;
+
+        const detCanvas  = document.getElementById('detChart');
+        const detCtx     = detCanvas.getContext('2d');
+        const detLiveEl  = document.getElementById('detChartLive');
+        const detAvgEl   = document.getElementById('detChartAvg');
+        const detMinEl   = document.getElementById('detChartMin');
+        const detMaxEl   = document.getElementById('detChartMax');
+        const detDurEl   = document.getElementById('detChartDuration');
+
+        function pushDetDataPoint(count) {
+            const now = performance.now();
+            if (detChartStartTime === null) detChartStartTime = now;
+            detHistory.push({ time: now - detChartStartTime, count });
+            if (detHistory.length > MAX_DET_HISTORY) {
+                detHistory = detHistory.slice(detHistory.length - MAX_DET_HISTORY);
+                detChartStartTime = now - detHistory[0].time;
+            }
+        }
+
+        function drawDetChart() {
+            const canvas = detCanvas;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            const ctx = detCtx;
+            ctx.scale(dpr, dpr);
+
+            const mL = 34, mR = 8, mT = 8, mB = 18;
+            const plotW = w - mL - mR;
+            const plotH = h - mT - mB;
+
+            const textColor    = getCSSVar('--text-secondary') || '#9ca3b8';
+            const mutedColor   = getCSSVar('--text-muted') || '#6b7280';
+            const borderColor  = getCSSVar('--border') || '#2a2e3f';
+            const yellowColor  = getCSSVar('--yellow') || '#eab308';
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (detHistory.length < 2) {
+                ctx.fillStyle = mutedColor;
+                ctx.font = '12px ' + getCSSVar('--font');
+                ctx.textAlign = 'center';
+                ctx.fillText('Waiting for data…', w / 2, h / 2 + 4);
+                return;
+            }
+
+            // Compute Y range (clamp min to 0)
+            let maxCount = -Infinity;
+            for (const d of detHistory) {
+                if (d.count > maxCount) maxCount = d.count;
+            }
+            const minCount = 0;
+            maxCount = Math.max(maxCount * 1.2, 10);  // at least 10, 20% headroom
+            // Round up to nice number
+            maxCount = Math.ceil(maxCount / 5) * 5;
+
+            const t0 = detHistory[0].time;
+            const xRange = detHistory[detHistory.length - 1].time - t0;
+
+            const toX = (t) => mL + (t - t0) / xRange * plotW;
+            const toY = (v) => mT + plotH - (v - minCount) / (maxCount - minCount) * plotH;
+
+            // ---- Grid lines ----
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 4]);
+
+            const ySteps = 4;
+            for (let i = 0; i <= ySteps; i++) {
+                const val = Math.round(minCount + (maxCount - minCount) * (i / ySteps));
+                const y = toY(val);
+                ctx.beginPath();
+                ctx.moveTo(mL, y);
+                ctx.lineTo(w - mR, y);
+                ctx.stroke();
+
+                ctx.fillStyle = mutedColor;
+                ctx.font = '9px ' + getCSSVar('--font');
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(String(val), mL - 5, y);
+            }
+            ctx.setLineDash([]);
+
+            // ---- X-axis time labels ----
+            const xSteps = 6;
+            ctx.fillStyle = mutedColor;
+            ctx.font = '9px ' + getCSSVar('--font');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for (let i = 0; i <= xSteps; i++) {
+                const t = t0 + xRange * (i / xSteps);
+                const x = toX(t);
+                const secs = (t / 1000).toFixed(i === 0 || i === xSteps ? 1 : 0);
+                ctx.fillText(secs + 's', x, h - mB + 4);
+            }
+
+            // ---- Build path ----
+            const points = detHistory.map(d => ({x: toX(d.time), y: toY(d.count)}));
+
+            // ---- Fill area under line ----
+            const grad = ctx.createLinearGradient(0, mT, 0, mT + plotH);
+            const yellowRGB = hexToRgb(yellowColor);
+            grad.addColorStop(0, `rgba(${yellowRGB.r},${yellowRGB.g},${yellowRGB.b},0.25)`);
+            grad.addColorStop(1, `rgba(${yellowRGB.r},${yellowRGB.g},${yellowRGB.b},0.02)`);
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, mT + plotH);
+            for (const p of points) ctx.lineTo(p.x, p.y);
+            ctx.lineTo(points[points.length - 1].x, mT + plotH);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // ---- Draw line ----
+            ctx.strokeStyle = yellowColor;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.stroke();
+
+            // ---- Draw dot at latest point ----
+            const last = points[points.length - 1];
+            ctx.fillStyle = yellowColor;
+            ctx.beginPath();
+            ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updateDetStats() {
+            if (detHistory.length === 0) {
+                detLiveEl.textContent = '0';
+                detAvgEl.textContent  = '0.0';
+                detMinEl.textContent  = '0';
+                detMaxEl.textContent  = '0';
+                detDurEl.textContent  = '0s';
+                return;
+            }
+
+            const latest = detHistory[detHistory.length - 1].count;
+            let sum = 0, min = Infinity, max = -Infinity;
+            for (const d of detHistory) {
+                sum += d.count;
+                if (d.count < min) min = d.count;
+                if (d.count > max) max = d.count;
+            }
+            const avg = sum / detHistory.length;
+
+            detLiveEl.textContent = String(latest);
+            detAvgEl.textContent  = avg.toFixed(1);
+            detMinEl.textContent  = String(min);
+            detMaxEl.textContent  = String(max);
+
+            const duration = (detHistory[detHistory.length - 1].time - detHistory[0].time) / 1000;
+            detDurEl.textContent = duration < 60
+                ? `${Math.round(duration)}s`
+                : `${(duration / 60).toFixed(1)}m`;
+        }
+
+        let detChartRAF = null;
+        function requestDetChartRedraw() {
+            if (detChartRAF) cancelAnimationFrame(detChartRAF);
+            detChartRAF = requestAnimationFrame(() => {
+                drawDetChart();
+                detChartRAF = null;
+            });
+        }
+        window.addEventListener('resize', requestDetChartRedraw);
+
+        // ---- Confidence slider ----
+        confSlider.addEventListener('input', () => {
+            confVal.textContent = parseFloat(confSlider.value).toFixed(2);
+        });
+
+        // ---- Source select toggles ----
+        const sourceSelect = document.getElementById('sourceSelect');
+        const fileUploadGroup = document.getElementById('fileUploadGroup');
+        sourceSelect.addEventListener('change', () => {
+            const isFile = sourceSelect.value === 'file';
+            fileUploadGroup.style.display = isFile ? 'block' : 'none';
+        });
+
+        // ================================================================
+        // Class Filter
+        // ================================================================
+        const classFilterHeader = document.getElementById('classFilterHeader');
+        const classFilterCard   = document.getElementById('classFilterCard');
+        const classSearchInput  = document.getElementById('classSearchInput');
+        const classCheckboxList = document.getElementById('classCheckboxList');
+        const classSelCount     = document.getElementById('classSelCount');
+        const classFilterCount  = document.getElementById('classFilterCount');
+        const selectAllBtn      = document.getElementById('selectAllClasses');
+        const deselectAllBtn    = document.getElementById('deselectAllClasses');
+
+        let allClasses = [];         // [{id, name}, ...]
+        let selectedClassIds = new Set();
+        let filterCollapsed = false;
+
+        // Fetch COCO class names from the API and build the checkbox list
+        async function loadClassFilter() {
+            try {
+                const resp = await fetch('/api/classes');
+                const names = await resp.json();
+                allClasses = names.map((name, idx) => ({id: idx, name}));
+                renderClassCheckboxes();
+            } catch (e) {
+                classCheckboxList.innerHTML = '<div class="empty-tracks">Failed to load classes</div>';
+            }
+        }
+
+        function renderClassCheckboxes() {
+            const query = classSearchInput.value.toLowerCase().trim();
+            let filtered = allClasses;
+            if (query) {
+                filtered = allClasses.filter(c => c.name.includes(query) || String(c.id) === query);
+            }
+
+            classCheckboxList.innerHTML = '';
+            if (filtered.length === 0) {
+                classCheckboxList.innerHTML = '<div class="empty-tracks">No classes match</div>';
+                return;
+            }
+
+            for (const cls of filtered) {
+                const item = document.createElement('label');
+                item.className = 'class-checkbox-item';
+                const checked = selectedClassIds.has(cls.id) ? 'checked' : '';
+                item.innerHTML = `
+                    <input type="checkbox" class="class-cb" data-id="${cls.id}" ${checked}>
+                    <span class="class-label">${cls.name}</span>
+                    <span class="class-id-badge">#${cls.id}</span>
+                `;                        const cb = item.querySelector('.class-cb');
+                        cb.addEventListener('change', () => {
+                            if (cb.checked) {
+                                selectedClassIds.add(cls.id);
+                            } else {
+                                selectedClassIds.delete(cls.id);
+                            }
+                            updateClassFilterUI();
+                            // Clear active preset highlight when user manually toggles
+                            document.querySelectorAll('#presetsRow .preset-pill').forEach(el => el.classList.remove('active'));
+                        });
+                classCheckboxList.appendChild(item);
+            }
+
+            updateClassFilterUI();
+        }
+
+        function updateClassFilterUI() {
+            const count = selectedClassIds.size;
+            classSelCount.textContent = count;
+            if (count === 0) {
+                classFilterCount.textContent = 'All 80 classes';
+            } else if (count === allClasses.length) {
+                classFilterCount.textContent = 'All classes selected';
+            } else {
+                classFilterCount.textContent = `${count} class${count > 1 ? 'es' : ''} selected`;
+            }
+        }
+
+        // Search input
+        classSearchInput.addEventListener('input', renderClassCheckboxes);
+
+        // Select All
+        selectAllBtn.addEventListener('click', () => {
+            allClasses.forEach(c => selectedClassIds.add(c.id));
+            // Update all visible checkbox DOM
+            document.querySelectorAll('.class-cb').forEach(cb => cb.checked = true);
+            updateClassFilterUI();
+        });
+
+        // Deselect All
+        deselectAllBtn.addEventListener('click', () => {
+            selectedClassIds.clear();
+            document.querySelectorAll('.class-cb').forEach(cb => cb.checked = false);
+            updateClassFilterUI();
+        });
+
+        // Collapse/expand
+        classFilterHeader.addEventListener('click', () => {
+            filterCollapsed = !filterCollapsed;
+            classFilterCard.classList.toggle('class-filter-collapsed', filterCollapsed);
+            const arrow = classFilterHeader.querySelector('.class-filter-header-arrow');
+            if (arrow) {
+                arrow.textContent = filterCollapsed ? '▶' : '▼';
+            }
+        });
+
+        // Add arrow to header
+        const hdrSpan = classFilterHeader.querySelector('span');
+        if (hdrSpan) {
+            const arrow = document.createElement('span');
+            arrow.className = 'class-filter-header-arrow';
+            arrow.textContent = '▼';
+            arrow.style.marginLeft = '6px';
+            hdrSpan.appendChild(arrow);
+        }
+
+        // Get currently selected class IDs as an array (null if none selected = all)
+        function getSelectedClassIds() {
+            if (selectedClassIds.size === 0) return null;
+            return Array.from(selectedClassIds).sort((a, b) => a - b);
+        }
+
+        // Load classes on page load
+        loadClassFilter();
+
+        // ================================================================
+        // Filter Presets
+        // ================================================================
+        // Built-in presets: { name, classIds, icon? }
+        const BUILT_IN_PRESETS = [
+            {
+                name: 'People',
+                classIds: [0],
+            },
+            {
+                name: 'Vehicles',
+                classIds: [2, 3, 4, 5, 6, 7, 8],
+            },
+            {
+                name: 'Animals',
+                classIds: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+            },
+            {
+                name: 'Street',
+                classIds: [9, 10, 11, 12, 13, 24, 25, 26, 27, 28],
+            },
+            {
+                name: 'Indoor',
+                classIds: [39, 40, 41, 42, 43, 44, 45, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 73, 74, 75, 76, 77, 79],
+            },
+            {
+                name: 'Sport',
+                classIds: [29, 30, 31, 32, 33, 34, 35, 36, 37, 38],
+            },
+        ];
+
+        const STORAGE_KEY = 'codebuff_class_presets';
+        const presetsRow = document.getElementById('presetsRow');
+        const savePresetBtn = document.getElementById('savePresetBtn');
+        const managePresetsBtn = document.getElementById('managePresetsBtn');
+
+        let customPresets = [];  // loaded from localStorage
+
+        function loadCustomPresets() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    customPresets = JSON.parse(raw);
+                }
+            } catch (_) {
+                customPresets = [];
+            }
+            managePresetsBtn.style.display = customPresets.length > 0 ? 'inline-block' : 'none';
+        }
+
+        function saveCustomPresets() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(customPresets));
+            } catch (_) {}
+            managePresetsBtn.style.display = customPresets.length > 0 ? 'inline-block' : 'none';
+        }
+
+        function getAllPresets() {
+            return [...BUILT_IN_PRESETS, ...customPresets];
+        }
+
+        function renderPresets() {
+            const allPresets = getAllPresets();
+            presetsRow.innerHTML = '';
+
+            for (const preset of allPresets) {
+                const isCustom = customPresets.includes(preset);
+                const pill = document.createElement('button');
+                pill.className = 'preset-btn preset-pill';
+                pill.title = `${preset.name} (${preset.classIds.length} classes)`;
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'pill-label';
+                labelSpan.textContent = preset.name;
+                pill.appendChild(labelSpan);
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'pill-count';
+                countSpan.textContent = preset.classIds.length;
+                pill.appendChild(countSpan);
+
+                // Delete button for custom presets
+                if (isCustom) {
+                    const delBtn = document.createElement('span');
+                    delBtn.className = 'preset-btn preset-delete';
+                    delBtn.textContent = '✕';
+                    delBtn.title = `Delete "${preset.name}" preset`;
+                    delBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        customPresets = customPresets.filter(p => p !== preset);
+                        saveCustomPresets();
+                        renderPresets();
+                        showToast(`Deleted preset: ${preset.name}`);
+                    });
+                    pill.appendChild(delBtn);
+                }
+
+                pill.addEventListener('click', () => {
+                    applyPreset(preset);
+                });
+
+                presetsRow.appendChild(pill);
+            }
+        }
+
+        function applyPreset(preset) {
+            selectedClassIds = new Set(preset.classIds);
+            renderClassCheckboxes();
+            // Highlight the active preset
+            document.querySelectorAll('#presetsRow .preset-pill').forEach(el => {
+                el.classList.remove('active');
+                const label = el.querySelector('.pill-label');
+                if (label && label.textContent === preset.name) {
+                    el.classList.add('active');
+                }
+            });
+            showToast(`Preset applied: ${preset.name} (${preset.classIds.length} classes)`);
+        }
+
+        // Save current selection as a new custom preset
+        savePresetBtn.addEventListener('click', () => {
+            const currentIds = getSelectedClassIds();
+            if (!currentIds || currentIds.length === 0) {
+                showToast('Select at least one class before saving a preset', 'error');
+                return;
+            }
+            showPresetNamingPopup(currentIds);
+        });
+
+        function showPresetNamingPopup(classIds) {
+            const overlay = document.createElement('div');
+            overlay.className = 'preset-popup-overlay';
+            overlay.innerHTML = `
+                <div class="preset-popup">
+                    <h3>💾 Save Filter Preset</h3>
+                    <p>Save the current ${classIds.length} selected classes as a reusable preset.</p>
+                    <input type="text" id="presetNameInput" placeholder="e.g., My Custom Set" maxlength="30" autofocus>
+                    <div class="popup-actions">
+                        <button class="btn btn-secondary" id="cancelPresetBtn" style="flex:0;padding:7px 16px;font-size:12px;">Cancel</button>
+                        <button class="btn btn-primary" id="confirmPresetBtn" style="flex:0;padding:7px 16px;font-size:12px;">Save</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            const input = overlay.querySelector('#presetNameInput');
+            const cancelBtn = overlay.querySelector('#cancelPresetBtn');
+            const confirmBtn = overlay.querySelector('#confirmPresetBtn');
+
+            function close() {
+                overlay.remove();
+            }
+
+            function save() {
+                const name = input.value.trim();
+                if (!name) {
+                    input.focus();
+                    input.style.borderColor = 'var(--red)';
+                    return;
+                }
+                // Check for duplicate names
+                const exists = getAllPresets().some(p => p.name.toLowerCase() === name.toLowerCase());
+                if (exists) {
+                    showToast(`A preset named "${name}" already exists`, 'error');
+                    return;
+                }
+                customPresets.push({ name, classIds: [...classIds] });
+                saveCustomPresets();
+                renderPresets();
+                close();
+                showToast(`Preset saved: ${name}`);
+            }
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') save();
+                if (e.key === 'Escape') close();
+            });
+            cancelBtn.addEventListener('click', close);
+            confirmBtn.addEventListener('click', save);
+
+            // Focus input after rendering
+            setTimeout(() => input.focus(), 100);
+
+            // Close on backdrop click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) close();
+            });
+        }
+
+        // Manage presets button - show a list with delete options
+        managePresetsBtn.addEventListener('click', () => {
+            if (customPresets.length === 0) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'preset-popup-overlay';
+            let itemsHtml = customPresets.map((p, i) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
+                    <span>💾 ${p.name} <span style="color:var(--text-muted);font-size:11px;">(${p.classIds.length} classes)</span></span>
+                    <button class="preset-btn preset-delete" data-idx="${i}" style="opacity:0.6;font-size:13px;">✕ Delete</button>
+                </div>
+            `).join('');
+            overlay.innerHTML = `
+                <div class="preset-popup" style="width:360px;">
+                    <h3>⚙️ Manage Presets</h3>
+                    <p>${customPresets.length} custom preset${customPresets.length > 1 ? 's' : ''} saved.</p>
+                    <div style="max-height:220px;overflow-y:auto;">${itemsHtml}</div>
+                    <div class="popup-actions" style="margin-top:14px;">
+                        <button class="btn btn-secondary" id="closeManageBtn" style="flex:0;padding:7px 16px;font-size:12px;">Close</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            overlay.querySelectorAll('.preset-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(btn.dataset.idx);
+                    const name = customPresets[idx].name;
+                    customPresets.splice(idx, 1);
+                    saveCustomPresets();
+                    renderPresets();
+                    // Close and re-open manage popup if there are remaining presets
+                    overlay.remove();
+                    if (customPresets.length > 0) {
+                        setTimeout(() => managePresetsBtn.click(), 50);
+                    }
+                    showToast(`Deleted preset: ${name}`);
+                });
+            });
+
+            function closeManage() { overlay.remove(); }
+            overlay.querySelector('#closeManageBtn').addEventListener('click', closeManage);
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeManage();
+            });
+            // Escape to close
+            overlay.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeManage();
+            });
+        });
+
+        // ================================================================
+        // Export / Import Presets
+        // ================================================================
+        const exportPresetsBtn = document.getElementById('exportPresetsBtn');
+        const importPresetsBtn = document.getElementById('importPresetsBtn');
+        const importPresetsInput = document.getElementById('importPresetsInput');
+
+        // Export only custom presets as a downloadable JSON file
+        exportPresetsBtn.addEventListener('click', () => {
+            if (customPresets.length === 0) {
+                showToast('No custom presets to export. Save a preset first!', 'error');
+                return;
+            }
+            const exportData = {
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                description: 'Object Detection & Tracking — Custom Filter Presets',
+                presets: customPresets.map(p => ({
+                    name: p.name,
+                    classIds: [...p.classIds].sort((a, b) => a - b),
+                })),
+            };
+
+            const json = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `detection-presets-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast(`Exported ${allPresets.length} preset${allPresets.length > 1 ? 's' : ''} as JSON`);
+        });
+
+        // Trigger file picker on import button click
+        importPresetsBtn.addEventListener('click', () => {
+            importPresetsInput.click();
+        });
+
+        // Shared import logic: parse a JSON file and import presets
+        function importPresetsFromFile(file) {
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    if (!data.presets || !Array.isArray(data.presets)) {
+                        showToast('Invalid preset file: missing "presets" array', 'error');
+                        return;
+                    }
+
+                    let imported = 0;
+                    let skipped = 0;
+
+                    for (const preset of data.presets) {
+                        if (!preset.name || !preset.classIds || !Array.isArray(preset.classIds) || preset.classIds.length === 0) {
+                            skipped++;
+                            continue;
+                        }
+
+                        const classIds = preset.classIds
+                            .map(id => parseInt(id))
+                            .filter(id => !isNaN(id) && id >= 0 && id <= 79);
+                        if (classIds.length === 0) {
+                            skipped++;
+                            continue;
+                        }
+
+                        const nameExists = getAllPresets().some(p => p.name.toLowerCase() === preset.name.trim().toLowerCase());
+                        if (nameExists) {
+                            skipped++;
+                            continue;
+                        }
+
+                        customPresets.push({
+                            name: preset.name.trim().slice(0, 30),
+                            classIds,
+                        });
+                        imported++;
+                    }
+
+                    if (imported > 0) {
+                        saveCustomPresets();
+                        renderPresets();
+                    }
+
+                    let msg = `Imported ${imported} preset${imported > 1 ? 's' : ''}`;
+                    if (skipped > 0) msg += ` (${skipped} skipped)`;
+                    showToast(msg);
+                } catch (err) {
+                    showToast('Failed to parse JSON file: ' + err.message, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                showToast('Failed to read file', 'error');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // File input change handler
+        importPresetsInput.addEventListener('change', () => {
+            if (importPresetsInput.files.length === 0) return;
+            importPresetsFromFile(importPresetsInput.files[0]);
+            importPresetsInput.value = '';
+        });
+
+        // Drag-and-drop import onto the presets row
+        presetsRow.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            presetsRow.style.outline = '2px dashed var(--accent)';
+            presetsRow.style.outlineOffset = '4px';
+        });
+        presetsRow.addEventListener('dragleave', () => {
+            presetsRow.style.outline = '';
+        });
+        presetsRow.addEventListener('drop', (e) => {
+            e.preventDefault();
+            presetsRow.style.outline = '';
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].name.endsWith('.json')) {
+                importPresetsFromFile(files[0]);
+            } else {
+                showToast('Please drop a .json preset file', 'error');
+            }
+        });
+
+        // Load custom presets and render
+        loadCustomPresets();
+        renderPresets();
+
+        // ---- Toast ----
+        function showToast(msg, type='success') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // ---- File upload - drag and drop ----
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput  = document.getElementById('fileInput');
+        const uploadContent = document.getElementById('uploadContent');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const uploadDone = document.getElementById('uploadDone');
+        const progressFill = document.getElementById('progressFill');
+        const uploadFilename = document.getElementById('uploadFilename');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const uploadedName = document.getElementById('uploadedName');
+
+        let uploadedFilePath = null;
+
+        // Click to browse
+        uploadZone.addEventListener('click', (e) => {
+            if (!uploadZone.classList.contains('has-file')) {
+                fileInput.click();
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                uploadFile(fileInput.files[0]);
+            }
+        });
+
+        // Drag events
+        uploadZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            if (!uploadZone.classList.contains('has-file')) {
+                uploadZone.classList.add('dragover');
+            }
+        });
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (!uploadZone.classList.contains('has-file') && e.dataTransfer.files.length > 0) {
+                uploadFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function uploadFile(file) {
+            // Validate video type by extension
+            const ext = file.name.split('.').pop().toLowerCase();
+            const validExts = ['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'wmv'];
+            if (!validExts.includes(ext)) {
+                showToast(`Unsupported format: .${ext}. Allowed: ${validExts.join(', ')}`, 'error');
+                return;
+            }
+
+            // Show progress
+            uploadContent.style.display = 'none';
+            uploadProgress.style.display = 'block';
+            uploadDone.style.display = 'none';
+            uploadFilename.textContent = file.name;
+            uploadStatus.textContent = 'Uploading…';
+            progressFill.style.width = '0%';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    progressFill.style.width = pct + '%';
+                    uploadStatus.textContent = `Uploading… ${pct}%`;
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.status === 'ok') {
+                        uploadedFilePath = data.file_path;
+                        // Show success state
+                        uploadProgress.style.display = 'none';
+                        uploadDone.style.display = 'block';
+                        uploadedName.textContent = data.file_name;
+                        uploadZone.classList.add('has-file');
+                        showToast(`Uploaded: ${data.file_name}`);
+                        // Auto-start the stream
+                        autoStartStream();
+                    } else {
+                        showToast(data.message || 'Upload failed', 'error');
+                        resetUploadUI();
+                    }
+                } else {
+                    showToast('Upload failed (server error)', 'error');
+                    resetUploadUI();
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                showToast('Upload failed (network error)', 'error');
+                resetUploadUI();
+            });
+
+            xhr.open('POST', '/api/upload');
+            xhr.send(formData);
+        }
+
+        function resetUploadUI() {
+            uploadContent.style.display = 'block';
+            uploadProgress.style.display = 'none';
+            uploadDone.style.display = 'none';
+            uploadZone.classList.remove('has-file');
+            progressFill.style.width = '0%';
+            uploadedFilePath = null;
+        }
+
+        function clearUpload() {
+            resetUploadUI();
+            fileInput.value = '';
+        }
+
+        function autoStartStream() {
+            if (uploadedFilePath) {
+                startStream(uploadedFilePath);
+            }
+        }
+
+        // ---- Start stream ----
+        async function startStream(filePath) {
+            btnStart.disabled = true;
+            btnStart.textContent = '⏳ Loading model…';
+
+            // Determine source
+            let source;
+            if (filePath) {
+                source = filePath;
+            } else if (sourceSelect.value === '0') {
+                source = '0';
+            } else if (uploadedFilePath) {
+                source = uploadedFilePath;
+            } else {
+                showToast('Please upload a video file first', 'error');
+                btnStart.disabled = false;
+                btnStart.textContent = '▶ Start Stream';
+                return;
+            }
+
+            const model  = document.getElementById('modelSelect').value;
+            const conf   = parseFloat(confSlider.value);
+            const device = document.getElementById('deviceSelect').value;
+            const classes = getSelectedClassIds();
+
+            const body = {source, model, conf, device};
+            if (classes) {
+                body.classes = classes;
+            }
+
+            try {
+                const resp = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body)
+                });
+                const data = await resp.json();
+                if (data.status === 'started' || data.status === 'already_running') {
+                    streamActive = true;
+                    streamStartTime = Date.now();
+                    videoImg.src = '/video_feed?' + streamStartTime;
+                    videoImg.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    statusDot.className = 'status-dot online';
+                    statusText.textContent = 'Streaming';
+                    btnStop.disabled = false;
+                    btnStart.textContent = '▶ Streaming';
+                    showToast('Stream started');
+                    // Reset charts for new stream
+                    fpsHistory = [];
+                    chartStartTime = null;
+                    detHistory = [];
+                    detChartStartTime = null;
+                    drawFpsChart();
+                    updateFpsStats();
+                    drawDetChart();
+                    updateDetStats();
+                    startPolling();
+                } else {
+                    showToast(data.message || 'Failed to start', 'error');
+                    btnStart.disabled = false;
+                    btnStart.textContent = '▶ Start Stream';
+                }
+            } catch (e) {
+                showToast('Connection error: ' + e.message, 'error');
+                btnStart.disabled = false;
+                btnStart.textContent = '▶ Start Stream';
+            }
+        }
+
+        // ---- Stop stream ----
+        async function stopStream() {
+            try {
+                await fetch('/api/stop', {method: 'POST'});
+            } catch (_) {}
+            streamActive = false;
+            stopPolling();
+            videoImg.style.display = 'none';
+            placeholder.style.display = 'flex';
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = 'Offline';
+            btnStart.disabled = false;
+            btnStart.textContent = '▶ Start Stream';
+            btnStop.disabled = true;
+            showToast('Stream stopped');
+        }
+
+        // ---- Reset tracker ----
+        async function resetTracker() {
+            try {
+                await fetch('/api/reset_tracker', {method: 'POST'});
+                showToast('Tracker reset');
+            } catch (_) {}
+        }
+
+        // ---- Poll status ----
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = setInterval(fetchStatus, 500);
+        }
+        function stopPolling() {
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+        }
+
+        async function fetchStatus() {
+            try {
+                const [statusResp, tracksResp, eventsResp] = await Promise.all([
+                    fetch('/api/status'),
+                    fetch('/api/tracks'),
+                    fetch('/api/events')
+                ]);
+                const s = await statusResp.json();
+                const tracks = await tracksResp.json();
+                const events = await eventsResp.json();
+
+                const fpsVal = s.fps;
+
+                hdrFps.textContent    = fpsVal.toFixed(1);
+                hdrTracks.textContent = s.num_tracks;
+                hdrDets.textContent   = s.num_detections;
+                statFps.textContent   = fpsVal.toFixed(1);
+                statTracks.textContent = s.num_tracks;
+                statDets.textContent  = s.num_detections;
+                statFrames.textContent = s.frame_count;
+
+                const detCount = s.num_detections;
+
+                // Push FPS and detection data points, redraw charts
+                if (s.running && fpsVal > 0) {
+                    pushFpsDataPoint(fpsVal);
+                }
+                if (s.running) {
+                    pushDetDataPoint(detCount);
+                }
+                drawFpsChart();
+                updateFpsStats();
+                drawDetChart();
+                updateDetStats();
+
+                if (!s.running && streamActive) {
+                    stopStream();
+                    showToast('Video stream ended', 'error');
+                }
+
+                renderTrackList(tracks);
+                renderEventLog(events);
+            } catch (_) { /* ignore polling errors */ }
+        }
+
+        // ---- Render track list (real data from /api/tracks) ----
+        function renderTrackList(tracks) {
+            trackList.innerHTML = '';
+            if (!tracks || tracks.length === 0) {
+                trackList.innerHTML = '<div class="empty-tracks">No active tracks</div>';
+                return;
+            }
+            for (const t of tracks) {
+                const div = document.createElement('div');
+                div.className = 'track-item';
+                const color = getColor(t.id);
+                const rgb = `rgb(${color[0]},${color[1]},${color[2]})`;
+                div.innerHTML = `
+                    <div class="track-left">
+                        <span class="track-color" style="background:${rgb}"></span>
+                        <span class="track-id" style="color:${rgb}">#${t.id}</span>
+                        <span class="track-class">${t.class_name}</span>
+                    </div>
+                    <span class="track-conf">${(t.confidence * 100).toFixed(0)}%</span>
+                `;
+                trackList.appendChild(div);
+            }
+        }
+
+        // ---- Render event log ----
+        function renderEventLog(events) {
+            if (!events || events.length === 0) {
+                eventLog.innerHTML = '<div class="empty-events">No events yet</div>';
+                eventCount.textContent = '0';
+                return;
+            }
+            eventCount.textContent = events.length;
+
+            let html = '';
+            for (const ev of events) {
+                const badgeType = ev.type;
+                let msg = '';
+                if (ev.type === 'new_track') {
+                    msg = `<strong>#${ev.track_id}</strong> <span style="color:var(--text-secondary)">${ev.class_name}</span>`;
+                } else if (ev.type === 'track_lost') {
+                    msg = `<strong>#${ev.track_id}</strong> <span style="color:var(--text-muted)">track lost</span>`;
+                } else if (ev.type === 'info') {
+                    msg = `<span style="color:var(--text-secondary)">${ev.class_name}</span>`;
+                }
+                const confStr = ev.confidence > 0 ? `${(ev.confidence * 100).toFixed(0)}%` : '';
+                html += `
+                    <div class="event-item">
+                        <span class="event-time">${ev.time}</span>
+                        <span class="event-badge ${badgeType}">${ev.type.replace('_', ' ')}</span>
+                        <span class="event-msg">${msg}</span>
+                        <span class="event-conf">${confStr}</span>
+                    </div>
+                `;
+            }
+            eventLog.innerHTML = html;
+            // Auto-scroll to bottom only if user is already near the bottom
+            const isNearBottom = eventLog.scrollTop + eventLog.clientHeight >= eventLog.scrollHeight - 40;
+            if (isNearBottom) {
+                eventLog.scrollTop = eventLog.scrollHeight;
+            }
+        }
+
+        // ---- Keyboard shortcut ----
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !btnStart.disabled) startStream();
+            if (e.key === 'r' || e.key === 'R') resetTracker();
+        });
+
+        // ---- On page unload, stop stream ----
+        window.addEventListener('beforeunload', () => {
+            if (streamActive) {
+                navigator.sendBeacon('/api/stop', JSON.stringify({}));
+            }
+        });
+
+        // ---- Also stop when page visibility changes (tab switch/close) ----
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && streamActive) {
+                navigator.sendBeacon('/api/stop', JSON.stringify({}));
+            }
+        });
+    </script>
+</body>
+</html>
